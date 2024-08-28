@@ -27,13 +27,14 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBar(
           title: const Text('Popup prompt'),
         ),
         body: Column(
           children: [
-            CustomTextPopupWidget(
+            CustomTextPopup(
               text: sampleText,
               onChanged: (String resultText) {
                 log(resultText);
@@ -47,21 +48,21 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-class CustomTextPopupWidget extends StatefulWidget {
+class CustomTextPopup extends StatefulWidget {
   final String text;
   final Function(String)? onChanged;
 
-  const CustomTextPopupWidget({
+  const CustomTextPopup({
     super.key,
     required this.text,
     this.onChanged,
   });
 
   @override
-  _CustomTextPopupWidgetState createState() => _CustomTextPopupWidgetState();
+  State<CustomTextPopup> createState() => _CustomTextPopupState();
 }
 
-class _CustomTextPopupWidgetState extends State<CustomTextPopupWidget> {
+class _CustomTextPopupState extends State<CustomTextPopup> {
   final RegExp _customFieldRegex = RegExp(r'\[([^\]]+)\]');
   late Map<String, String> _selectedOptions;
 
@@ -158,7 +159,7 @@ class CustomTextEdit extends StatefulWidget {
       {super.key, required this.text, required this.onTextChanged});
 
   @override
-  _CustomTextEditState createState() => _CustomTextEditState();
+  State<CustomTextEdit> createState() => _CustomTextEditState();
 }
 
 class _CustomTextEditState extends State<CustomTextEdit> {
