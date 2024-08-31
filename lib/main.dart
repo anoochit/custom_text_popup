@@ -26,9 +26,7 @@ class _MyAppState extends State<MyApp> {
       home: GestureDetector(
         onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Popup prompt'),
-          ),
+          appBar: AppBar(),
           body: Column(
             children: [
               Text(
