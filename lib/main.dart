@@ -13,35 +13,49 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  String sampleTextPopup =
+      'A macro, close-up view of the [orange blue and green, the pink yellow and purple, the red white and black, the yellow orange and red, the blue purple and white] petals of a [dahlia flower,hydrangea,rose,sunflower] in bright, saturated colors in a Mexican mural art painting style.';
+
   String sampleText =
-      'A macro, close-up view of the [orange blue and green petals, the pink yellow and purple petals, the red white and black petals, the yellow orange and red petals, the blue purple and white petals] of a [dahlia flower,hydrangea,rose,sunflower] in bright, saturated colors in a Mexican mural art painting style.';
-
-  void updateText(String newText) {
-    setState(() {
-      sampleText = newText;
-
-      log(newText);
-    });
-  }
+      'A macro, close-up view of the [orange] petals of a [tulip] in bright, [saturated] colors in a Mexican mural art painting style.';
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Popup prompt'),
-        ),
-        body: Column(
-          children: [
-            CustomTextPopup(
-              text: sampleText,
-              onChanged: (String resultText) {
-                log(resultText);
-                // You can use the resultText to update your state or perform any other actions
-              },
-            )
-          ],
+      home: GestureDetector(
+        onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Popup prompt'),
+          ),
+          body: Column(
+            children: [
+              Text(
+                'CustomTextPopup',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              CustomTextPopup(
+                text: sampleTextPopup,
+                onChanged: (resultText) {
+                  log(resultText);
+                  // You can use the resultText to update your state or perform any other actions
+                },
+              ),
+              const SizedBox(height: 32.0),
+              Text(
+                'CustomTextField',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              CustomTextField(
+                text: sampleText,
+                onResult: (resultText) {
+                  log(resultText);
+                  // You can use the resultText to update your state or perform any other actions
+                },
+              )
+            ],
+          ),
         ),
       ),
     );
@@ -51,11 +65,13 @@ class _MyAppState extends State<MyApp> {
 class CustomTextPopup extends StatefulWidget {
   final String text;
   final Function(String)? onChanged;
+  final Function(String)? value;
 
   const CustomTextPopup({
     super.key,
     required this.text,
     this.onChanged,
+    this.value,
   });
 
   @override
@@ -79,6 +95,9 @@ class _CustomTextPopupState extends State<CustomTextPopup> {
       List<String> options = _getOptions(field);
       _selectedOptions[field] = options.first;
     }
+    String resultText = _generateResultText();
+
+    widget.value?.call(resultText);
   }
 
   List<String> _getOptions(String field) {
@@ -103,6 +122,7 @@ class _CustomTextPopupState extends State<CustomTextPopup> {
           _selectedOptions[field] = newValue;
           String resultText = _generateResultText();
           widget.onChanged?.call(resultText);
+          widget.value?.call(resultText);
         });
       },
       itemBuilder: (BuildContext context) {
@@ -117,7 +137,7 @@ class _CustomTextPopupState extends State<CustomTextPopup> {
         _selectedOptions[field]!,
         style: const TextStyle(
           color: Colors.blue,
-          fontWeight: FontWeight.bold,
+          decoration: TextDecoration.underline,
         ),
       ),
     );
@@ -151,76 +171,100 @@ class _CustomTextPopupState extends State<CustomTextPopup> {
   }
 }
 
-class CustomTextEdit extends StatefulWidget {
+class CustomTextField extends StatefulWidget {
   final String text;
-  final Function(String) onTextChanged;
+  final Function(String) onResult;
 
-  const CustomTextEdit(
-      {super.key, required this.text, required this.onTextChanged});
+  const CustomTextField({
+    super.key,
+    required this.text,
+    required this.onResult,
+  });
 
   @override
-  State<CustomTextEdit> createState() => _CustomTextEditState();
+  State<CustomTextField> createState() => _CustomTextFieldState();
 }
 
-class _CustomTextEditState extends State<CustomTextEdit> {
-  late List<InlineSpan> textSpans;
+class _CustomTextFieldState extends State<CustomTextField> {
+  final Map<String, TextEditingController> _controllers = {};
+  final RegExp _textFieldPattern = RegExp(r'\[([^\]]*)\]');
 
   @override
   void initState() {
     super.initState();
-    textSpans = _buildTextSpans();
+    _initializeControllers();
   }
 
-  List<InlineSpan> _buildTextSpans() {
-    List<InlineSpan> spans = [];
-    RegExp exp = RegExp(r'\[([^\]]+)\]');
-    int lastMatchEnd = 0;
-
-    for (Match match in exp.allMatches(widget.text)) {
-      if (match.start > lastMatchEnd) {
-        spans.add(
-            TextSpan(text: widget.text.substring(lastMatchEnd, match.start)));
-      }
-
-      spans.add(
-        WidgetSpan(
-          child: IntrinsicWidth(
-            child: TextField(
-              controller: TextEditingController(text: match.group(1)),
-              decoration: const InputDecoration(
-                isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                border: OutlineInputBorder(),
-              ),
-              style: const TextStyle(color: Colors.blue),
-              onChanged: (value) {
-                String newText = widget.text
-                    .replaceRange(match.start, match.end, '[$value]');
-                widget.onTextChanged(newText);
-              },
-            ),
-          ),
-        ),
-      );
-
-      lastMatchEnd = match.end;
+  void _initializeControllers() {
+    final matches = _textFieldPattern.allMatches(widget.text);
+    for (final match in matches) {
+      final key = match.group(1) ?? '';
+      _controllers[key] = TextEditingController();
     }
-
-    if (lastMatchEnd < widget.text.length) {
-      spans.add(TextSpan(text: widget.text.substring(lastMatchEnd)));
-    }
-
-    return spans;
   }
 
   @override
   Widget build(BuildContext context) {
-    return RichText(
-      text: TextSpan(
-        style: DefaultTextStyle.of(context).style,
-        children: textSpans,
-      ),
+    final widgets = <Widget>[];
+    int lastIndex = 0;
+
+    _textFieldPattern.allMatches(widget.text).forEach((match) {
+      if (match.start > lastIndex) {
+        widgets.add(Text(
+          widget.text.substring(lastIndex, match.start),
+          style: Theme.of(context).textTheme.bodyLarge,
+        ));
+      }
+
+      final key = match.group(1) ?? '';
+      widgets.add(SizedBox(
+        width: 100,
+        child: TextField(
+          controller: _controllers[key],
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+          ),
+          onChanged: (_) => _updateResult(),
+        ),
+      ));
+
+      _controllers[key]!.text = key;
+
+      lastIndex = match.end;
+    });
+
+    if (lastIndex < widget.text.length) {
+      widgets.add(
+        Text(
+          widget.text.substring(lastIndex),
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+      );
+    }
+
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: widgets,
     );
+  }
+
+  void _updateResult() {
+    String result = widget.text;
+    for (final entry in _controllers.entries) {
+      result = result.replaceAll('[${entry.key}]', entry.value.text);
+    }
+    widget.onResult(result);
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 }
